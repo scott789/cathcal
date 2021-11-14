@@ -3,6 +3,7 @@ import datetime
 import boto3
 import os
 import json
+from bs4 import BeautifulSoup
 
 
 def format_url(url):
@@ -35,30 +36,21 @@ def retrieve_celebrations():
 
 
 def retrieve_readings():
-    ewtn_response = requests.get(format_url("https://www.ewtn.com/se/readings/readingsservice.svc/day/{}-{}-{}/en"),
-                                 timeout=1)
-    ewtn_response_json = ewtn_response.json()
-    print('ewtn response ', json.dumps(ewtn_response_json, indent=2))
+    usccb_url = 'https://bible.usccb.org/daily-bible-reading'
+    html_text = requests.get(usccb_url).text
+    soup = BeautifulSoup(html_text, 'html.parser')
 
-    reading_groups = ewtn_response_json.get('ReadingGroups')
-    response = ''
-    for i in range(0, len(reading_groups)):
-        group = reading_groups[i]
-        name = (group['Name'] + ' readings ', 'Readings')[group['Name'] is None]
-        note = '(' + group['Note'] + ')' if group['Note'] is not None else ''
-        readings = group['Readings']
-        verses = retrieve_individual_verses(readings)
-        response = response + '\n' + name + note + verses + '\n'
+    ret_string = ''
 
-    return response
+    for entry in soup.find_all('h3'):
+        reading_title_block = entry.find_next_sibling()
+        reading = reading_title_block.contents[1].string
+        # ret_string += entry.string
+        # ret_string += '\n'
+        ret_string += reading
+        ret_string += '\n'
 
-
-def retrieve_individual_verses(readings):
-    message = ''
-    for i in range(0, len(readings)):
-        text = readings[i]['Citations'][0]['Reference']
-        message = message + "\n" + text
-    return message
+    return ret_string
 
 
 def retrieve_readings_verses_url():
@@ -85,7 +77,7 @@ def deliver_message(message):
 
 def lambda_handler(event, context):
     message = 'CathCal>\nToday\'s celebration(s):\n' + retrieve_celebrations()
-    # message = message + retrieve_readings()
+    message = message + "\n" + retrieve_readings()
     message = message + "\n" + retrieve_readings_verses_url()
 
     print('final message:', message)
