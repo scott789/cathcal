@@ -42,13 +42,15 @@ def retrieve_readings():
 
     ret_string = ''
 
-    for entry in soup.find_all('h3'):
-        reading_title_block = entry.find_next_sibling()
-        reading = reading_title_block.contents[1].string
-        # ret_string += entry.string
-        # ret_string += '\n'
-        ret_string += reading
-        ret_string += '\n'
+    try:
+        for entry in soup.find_all('h3'):
+            reading_title_block = entry.find_next_sibling()
+            if len(reading_title_block.contents) > 1:
+                reading = reading_title_block.contents[1].string
+                ret_string += reading
+                ret_string += '\n'
+    except Exception as e:
+        print('Exception', e)
 
     return ret_string
 
